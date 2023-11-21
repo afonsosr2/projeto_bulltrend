@@ -1,0 +1,910 @@
+---
+title: "Análise de dados com R: utilizando o ChatGPT para aumentar a produtividade"
+format: html
+editor: visual
+---
+
+## Introdução
+
+![](images/Logo.png){width="720"}
+
+A consultoria financeira **Bulltrend** é uma empresa focada no suporte a clientes que investem no mercado financeiro, investigando as suas carteiras de investimento e analisando os ativos da bolsa brasileira (Ibovespa), pensando na melhor forma de indicar bons ativos e acompanhar a evolução destes.
+
+Você, como analista de dados dessa consultoria, recebeu uma demanda do *Head de Dados* para extrair dados de uma série de ativos da bolsa brasileira e tratar esses dados para que sejam utilizados pelos consultores em softwares de BI. Esses dados consistem na seleção de vários indicadores para análise de desempenho das empresas presentes no **Índice Ibovespa**, bem como de outros valores importantes para análise.
+
+Como grande parte dos analistas de dados desse setor da empresa utiliza a linguagem R, você terá que utilizar os conhecimentos que já possui em análise de dados para traduzir nesta linguagem conceitos que aprendeu em outras linguagens, como Python. E, para isso, utilizará o **ChatGPT** como um **assistente pessoal** para agilizar as análises e criar os códigos para extração, tratamento e visualização dos dados antes de entregar os dados consolidados para o time de consultoria da **Bulltrend**.
+
+#### **Problema de negócio:**
+
+O objetivo da **Bulltrend** é utilizar esses dados para gerar dashboards, análises e dar suporte às demandas do time de consultoria. Para tal, é necessário combinar os dados passados em uma única tabela que seja fácil de manipular em qualquer ferramenta de BI ou análise de dados.
+
+#### **Base de dados:**
+
+Vamos importar duas bases de dados em que:
+
+-   A primeira será um arquivo JSON chamado `dados_ativo_ibov.json` que possui todos os indicadores e valores importantes para consolidação em uma tabela final. Os dados estão atualizados até a data de **07/11/2023** com dados reais de empresas listadas na bolsa.
+
+-   A segunda base de dados será um arquivo CSV chamado `Ativos_IBOV.csv` com a lista de todos os ativos que compõe o índice [IBOVESPA](https://www.b3.com.br/pt_br/market-data-e-indices/indices/indices-amplos/indice-ibovespa-ibovespa-composicao-da-carteira.htm). Será necessário, filtrar e retirar bancos e outras empresas financeiras que possuem indicadores mais específicos para análise.
+
+#### **Desafio:**
+
+Você, como analista de dados dessa consultoria, precisa extrair os dados dessas bases e tratá-los para que sejam utilizados pelos consultores em softwares de BI.
+
+## Instalando os pacotes do projeto
+
+```{r, results='hide', message=FALSE, warning=FALSE}
+# Rodar código no console
+# Tidyverse é um conjunto de pacotes que traz o ggplot2, dplyr, tidyr...
+# repos = "http://cran.us.r-project.org"
+# install.packages(c("tidyverse", "jsonlite", "plotly","openxlsx"), repos = repos)
+```
+
+## Obtendo os dados dos ativos
+
+Vamos iniciar o nosso processo de obtenção de arquivos extraindo os dados do arquivo `.json` que foi compartilhado conosco. Para agilizar todo o processo das nossas análises vamos pedir auxílio do ChatGPT. Neste notebook, vamos ser apresentados à prompts já testados dentro do fluxo que precisamos executar.
+
+O nosso primeiro prompt diz:
+
+::: callout-tip
+#### Prompt
+
+Gere um código R que transforme o arquivo "dados_ativos_ibov.json" em uma lista chamada "dados" e leia o item de nome "ABEV3" dessa lista. Os dados vindos de "ABEV3" possuem n listas. Passe cada uma dessas listas para uma tabela e dê o nome de "tab\_" seguida de sua ordem.
+:::
+
+#### Código
+
+```{r, message=FALSE, warning=FALSE}
+# Importando os pacotes
+library(tidyverse)
+library(jsonlite)
+```
+
+```{r}
+# Leia o arquivo JSON em uma lista
+dados <- fromJSON("dados_ativos_ibov.json")
+```
+
+```{r}
+# Encontre os registros "ABEV3" na lista
+ticker <- "ABEV3"
+dados[[ticker]]
+```
+
+```{r}
+for (i in seq_along(dados[[ticker]])) {
+  tabela_nome <- paste("tab_", i, sep = "")
+  assign(tabela_nome, as.data.frame(dados[[ticker]][[i]]))
+}
+```
+
+### Tabela 1 (tab_1)
+
+```{r}
+tab_1
+```
+
+::: callout-tip
+#### Prompt
+
+Gere um código em R que crie o data.frame "df_1" com as colunas "tipo" e "valor". A coluna "tipo" recebe a coluna "X1" de "tab_1" e a coluna "valor" recebe a coluna "X2" do mesmo "tab_1". Em seguida, selecione as linhas do data.frame por indice com apenas a 1ª, 4ª e 5ª linhas.
+:::
+
+#### Código
+
+```{r}
+# Crie o data frame a partir de "tab_1", renomeando as colunas
+df_1 <- tab_1 %>%
+  select(tipo = X1, valor = X2)
+```
+
+```{r}
+# Selecione as linhas do data frame por índice
+df_1 <- df_1[c(1, 4, 5), ]
+```
+
+```{r}
+df_1
+```
+
+Note que precisamos ajustar a coluna "tipo" retirando o símbolo "?".
+
+::: callout-tip
+#### Prompt
+
+Gere um código em R para retirar o primeiro caracter dos valores da coluna "tipo" do data.frame "df_1" usando regex. Além disso, renomeie o registro "Papel" da coluna "tipo" do "df_1" para "Ação".
+:::
+
+#### Código
+
+```{r}
+# Remove o primeiro caractere dos valores da coluna "tipo" usando regex
+df_1$tipo <- gsub("^.", "", df_1$tipo)
+```
+
+```{r}
+# Renomeia o registro "Papel" para "Ação" na coluna "tipo"
+df_1$tipo[df_1$tipo == "Papel"] <- "Ação"
+```
+
+```{r}
+df_1
+```
+
+Pronto! Já tratamos a 1ª tabela da nossa base de dados. Agora vamos prosseguir para a 2ª com os dados de Valor de Mercado, número de ações entre outros.
+
+### Tabela 2 (tab_2)
+
+```{r}
+tab_2
+```
+
+::: callout-tip
+#### Prompt
+
+Gere um código em R que crie o data.frame "df_2" com as colunas "tipo" e "valor". A coluna "tipo" recebe um vetor que seleciona as colunas "X1" e "X3" de "tab_2" e a coluna "valor" recebe um vetor que seleciona as colunas "X2" e "X4" do mesmo "tab_2".
+:::
+
+#### Código
+
+```{r}
+# Crie o data.frame df_2
+df_2 <- data.frame(
+  tipo = c(tab_2$X1, tab_2$X3), # Seleciona as colunas X1 e X3
+  valor = c(tab_2$X2, tab_2$X4)  # Seleciona as colunas X2 e X4
+)
+```
+
+```{r}
+df_2
+```
+
+::: callout-tip
+#### Prompt
+
+Elimine a 3ª linha do data.frame "df_2" usando filter() e remova o primeiro caracter dos valores da coluna "tipo" do data.frame "df_2" usando regex.
+:::
+
+#### Código
+
+```{r}
+# Elimine a 3ª linha de df_2 usando filter()
+df_2 <- df_2 %>%
+  filter(row_number() != 3)
+```
+
+```{r}
+# Remova o primeiro caractere dos valores da coluna "tipo" usando regex
+df_2$tipo <- gsub("^.", "", df_2$tipo)
+```
+
+```{r}
+df_2
+```
+
+Nossa 2ª tabela já foi extraída com sucesso utilizando o apoio do ChatGPT. Agora, vamos para a tabela de indicadores, que será a nossa tabela com maior número de observações a obter.
+
+### Tabela 3 (tab_3)
+
+Antes de chamarmos o novo prompt, vamos ler o **tab_3** e selecionar apenas as colunas de interesse como aprendemos no 1º prompt da **tab_2.**
+
+```{r}
+tab_3
+```
+
+Aqui vamos, retirar as colunas com os dados de oscilações que não seram necessárias em nossas análises. (`X1` e `X2`).
+
+```{r}
+# Crie o data frame "df_3" a partir de "tab_3" agrupando as colunas
+df_3 <- data.frame(tipo = c(tab_3$X3, tab_3$X5), 
+                   valor = c(tab_3$X4, tab_3$X6))  
+```
+
+```{r}
+df_3
+```
+
+Precisamos eliminar as linhas em que temos apenas a frase "Indicadores fundamentalistas". Para isso, vamos pedir o suporte novamente ao chatGPT. Esta frase está nas linhas 1 e 13 de nossos dados.
+
+::: callout-tip
+#### Prompt
+
+Gere o código que exclua as linhas 1 e 13 do data.frame "df_3" com filter() e que retire o primeiro caractere dos valores da coluna "tipo" do mesmo dataframe usando regex.
+:::
+
+#### Código
+
+```{r}
+# Exclua as linhas 1 e 13 do data frame
+df_3 <- df_3 %>%
+  filter(!row_number() %in% c(1, 13))
+```
+
+```{r}
+# Remova o primeiro caractere dos valores da coluna "tipo" usando regex
+df_3$tipo <- gsub("^.", "", df_3$tipo)
+```
+
+```{r}
+df_3
+```
+
+Finalizamos o tratamento de mais uma tabela. Vamos prosseguir para a tabela com os dados do balanço patrimonial da empresa.
+
+### Tabela 4 (tab_4)
+
+Nesta nova tabela vamos aplicar as ideias que já exploramos nas últimas tabelas que tratamos. Aqui não utilizaremos o chatGPT, pois o processo é similar para este caso. Vamos ler a **tab_4?**
+
+```{r}
+tab_4
+```
+
+```{r}
+# Crie o data frame "df_4" a partir de "tab_4" agrupando as colunas
+df_4 <- data.frame(tipo = c(tab_4$X1, tab_4$X3), 
+                   valor = c(tab_4$X2, tab_4$X4))
+df_4
+```
+
+```{r}
+df_4 <- df_4 %>% 
+  filter(!row_number() %in% c(1,5))
+```
+
+```{r}
+df_4$tipo <- gsub("^.", "", df_4$tipo)
+```
+
+```{r}
+df_4
+```
+
+Tratamos a 4ª tabela gerando mais um df com os dados a serem analisados. Vamos partir para a última tabela com os dados demonstrativos de resultados.
+
+### Tabela 5 (tab_5)
+
+Na nossa última tabela iniciaremos fazendo alguns processos semelhantes a **tab_4**. Vamos ler a **tab_5?**
+
+```{r}
+tab_5
+```
+
+```{r}
+# Crie o data frame "df_5" a partir de "tab_5" agrupando as colunas
+df_5 <- data.frame(tipo = c(tab_5$X1, tab_5$X3), 
+                   valor = c(tab_5$X2, tab_5$X4))
+df_5
+```
+
+```{r}
+# Exclua as linhas 1, 2, 6 e 7 do data frame
+df_5 <- df_5 %>%
+  filter(!row_number() %in% c(1, 2, 6, 7))
+```
+
+```{r}
+df_5$tipo <- gsub("^.", "", df_5$tipo)
+```
+
+```{r}
+df_5
+```
+
+***Você notou algum problema nesta tabela?***
+
+Sim, temos cada coluna sendo repetida duas vezes, isto porque as três primeiras rementem aos valores para os **últimos 12 meses** e as três últimas para os **últimos 3 meses**. Aqui, então, vamos pedir auxílio para o ChatGPT para renomear os dados na coluna tipo.
+
+::: callout-tip
+#### Prompt
+
+Gere o código em R que concatene o valor "\_ult_12_meses" nos primeiros 3 valores da coluna "tipo" do dataframe "df_5" e "\_ult_3_meses" nos 3 últimos valores da coluna "tipo".
+:::
+
+#### Código
+
+```{r}
+# Concatenar "_ult_12_meses" nos primeiros 3 valores da coluna "tipo"
+df_5$tipo[1:3] <- paste0(df_5$tipo[1:3], "_ult_12_meses")
+# Concatenar "_ult_3_meses" nos últimos 3 valores da coluna "tipo"
+df_5$tipo[4:6] <- paste0(df_5$tipo[4:6], "_ult_3_meses")
+```
+
+```{r}
+df_5
+```
+
+Agora sim! Temos todas as 5 tabelas tratadas. Vamos então seguir para agrupá-las em uma só, mudando também a sua estrutura para que o time de consultoria possa utilizá-la em softwares de BI e/ou análise de dados.
+
+## Agrupando as tabelas
+
+Vamos pedir mais um auxílio aqui ao ChatGPT desta vez para consolidar as tabelas em uma só. Note que intencionalmente usamos o mesmo padrão "tipo" para o tipo do dado e "valor" para o valor do dado que extraímos.
+
+::: callout-tip
+#### Prompt
+
+Gere o código em R que agrupe as 5 tabelas tratadas (df_1, .., df_5) uma embaixo da outra pelas colunas "tipo" e "valor".
+:::
+
+#### Código
+
+```{r}
+# Combine os data.frames df_1, df_2, df_3, df_4 e df_5 em um único data.frame
+dados <- rbind(df_1, df_2, df_3, df_4, df_5)
+```
+
+```{r}
+library(knitr)
+kable(dados)
+```
+
+Mas esta não é a forma que queremos apresentar os dados, principalmente pelo fato de que esta tabela apresenta apenas um ativo.
+
+## Alterando a estrutura da tabela consolidada
+
+Para isso, vamos transformar essa tabela do formato longo (**long**) para amplo (**wide**). Ou seja, ao invés de muitas linhas teremos muitas colunas, cada uma com um tipo de dado.
+
+::: callout-tip
+#### Prompt
+
+Gere o código que altere a estrutura de long para wide do data.frame "dados" que possui 2 colunas: a coluna "tipo" com os indicadores e a "valor" com os valores de cada indicador. Construa um novo data.frame que esses indicadores sejam as colunas e os valores os registros do data.frame.
+:::
+
+#### Código
+
+```{r}
+# Transforme a estrutura de long para wide
+dados_wide <- spread(dados, key = tipo, value = valor)
+```
+
+```{r, results='hide'}
+view(dados_wide)
+```
+
+```{r}
+kable(dados_wide)
+```
+
+## Importando mais ativos
+
+Nesta etapa, vamos trazer 3 ações para conseguir replicar todo o processo que fizemos anteriormente para um número `n` de ações desejadas. São elas
+
+1.  Gerar uma função que extraia os dados e trata as tabelas (compilando os processos)
+2.  Selecionar quais ativos vamos extrair pelo `Ativos_IBOV.csv`
+3.  Extrair os dados dos ativos selecionados.
+
+### 1. Função `indicadores`
+
+```{r}
+# A função é adequada para uma série de empresas exceto bancos que possuem
+# diferentes indicadores dos quais iremos analisar.
+
+indicadores <- function(ticker){
+  
+  # Leia o arquivo JSON em uma lista
+  dados <- fromJSON("dados_ativos_ibov.json")
+  
+  # Crie tabelas a partir das listas e nomeie-as com "tab_" + ordem
+  for (i in 1:length(dados[[ticker]])) {
+    table_name <- paste0("tab_", i)
+    table_data <- as.data.frame(dados[[ticker]][[i]])
+    assign(table_name, table_data)
+  }
+  
+  ## Tabela 1
+  
+  # Crie o data frame a partir de "tab_1", renomeando as colunas
+  df_1 <- tab_1 %>%
+    select(tipo = X1, valor = X2)
+
+  # Selecione as linhas do data frame por índice
+  df_1 <- df_1 %>% slice(c(1, 4, 5))
+  
+  # Remove o primeiro caractere dos valores da coluna "tipo" usando regex
+  df_1$tipo <- sub("^.", "", df_1$tipo)
+  
+  # Renomeia o registro "Papel" para "Ação" na coluna "tipo"
+  df_1$tipo <- gsub("Papel", "Ação", df_1$tipo)
+
+  
+  ## Tabela 2
+  
+  # Crie o data.frame df_2
+  df_2 <- data.frame(
+    tipo = c(tab_2$X1, tab_2$X3), # Seleciona as colunas X1 e X3
+    valor = c(tab_2$X2, tab_2$X4)  # Seleciona as colunas X2 e X4
+  )
+  
+  # Elimine a 3ª linha de df_2 usando filter()
+  df_2 <- df_2 %>%
+    filter(row_number() != 3)
+  
+  # Remova o primeiro caractere dos valores da coluna "tipo" usando regex
+  df_2$tipo <- sub("^.", "", df_2$tipo)
+  
+  ## Tabela 3
+  
+  # Crie o data frame "df_3" a partir de "tab_3" agrupando as colunas
+  df_3 <- data.frame(tipo = c(tab_3$X3, tab_3$X5), 
+                    valor = c(tab_3$X4, tab_3$X6))  
+  
+  # Exclua as linhas 1 e 13 do data frame
+  df_3 <- df_3 %>%
+    filter(!row_number() %in% c(1, 13))
+  
+  # Remova o primeiro caractere dos valores da coluna "tipo" usando regex
+  df_3$tipo <- gsub("^.", "", df_3$tipo)
+  
+  
+  ## Tabela 4
+  
+  # Crie o data frame "df_4" a partir de "tab_4" agrupando as colunas
+  df_4 <- data.frame(tipo = c(tab_4$X1, tab_4$X3), 
+                     valor = c(tab_4$X2, tab_4$X4))
+    
+  df_4 <- df_4 %>% 
+  filter(!row_number() %in% c(1,5))
+  
+  df_4$tipo <- gsub("^.", "", df_4$tipo)
+  
+   
+  ## Tabela 5
+  
+  # Crie o data frame "df_5" a partir de "tab_5" agrupando as colunas
+  df_5 <- data.frame(tipo = c(tab_5$X1, tab_5$X3), 
+                     valor = c(tab_5$X2, tab_5$X4))
+  
+  # Exclua as linhas 1, 2, 6 e 7 do data frame
+  df_5 <- df_5 %>%
+    filter(!row_number() %in% c(1, 2, 6, 7))
+  
+  df_5$tipo <- gsub("^.", "", df_5$tipo)
+  
+  # Concatene os sufixos nos valores da coluna "tipo" em df_5
+  df_5$tipo <- c(paste0(df_5$tipo[1:3], "_ult_12_meses"), 
+                 paste0(df_5$tipo[4:6], "_ult_3_meses"))
+  
+  ## Agrupando as tabelas
+
+  dados <- rbind(df_1, df_2, df_3, df_4, df_5)
+  
+  ## Alterando a estrutura da tabela
+  
+  # Transforme a estrutura de long para wide
+  dados_wide <- spread(dados, key = tipo, value = valor)
+}
+```
+
+#### Testando a função
+
+```{r}
+# Testando a execução da função por meio de um ativo
+vale <- indicadores("VALE3")
+kable(vale)
+```
+
+Com a nossa função já criada e testada, vamos partir para a segunda etapa deste processo que é a seleção dos ativos que vamos extrair. Para isso, vamos pedir auxílio ao chatGPT.
+
+### 2. Selecionando os ativos
+
+::: callout-tip
+#### Prompt
+
+Gere um código em R para ler o arquivo csv "Ativos_IBOV.csv", considerando "latin1" como codificação do arquivo e ";" como separador dos valores. Promova a 1ª linha dos dados como nome da coluna e selecione apenas as duas colunas "Setor" e "Código" .
+
+Filtre também os dados em que a coluna "Setor" não tenha um registro que comece com "Financ e Outros" e selecione aleatoriamente 40 ativos dessa base. Use o pacote dplyr para a filtragem e seleção dos dados.
+:::
+
+#### Código
+
+```{r}
+# Leitura do arquivo CSV
+dados <- read.csv("Ativos_IBOV.csv", encoding = "latin1", sep = ";", header = TRUE)
+```
+
+```{r}
+str(dados)
+```
+
+```{r}
+# Filtragem e seleção de colunas
+dados_filtrados <- dados %>%
+  filter(!grepl("^Financ e Outros", Setor)) %>%
+  select(Setor, Código)
+str(dados_filtrados)
+```
+
+```{r}
+# Amostragem aleatória de 40 ativos
+set.seed(42) # aplicando uma reprodutibilidade
+amostra <- dados_filtrados %>%
+  sample_n(40)
+```
+
+```{r}
+# Armazenar a coluna "Código" na variável "ibov"
+ibov <- amostra$Código
+ibov
+```
+
+Agora que já definimos a nossa amostra com os ativos que vamos extrair os dados, vamos aplicar a função para resgatar os indicadores de todos eles a fim de criar uma única tabela com os dados consolidados. Novamente, vamos perguntar como construir esse código para o ChatGPT.
+
+### 3. Extraindo os dados dos ativos selecionados
+
+::: callout-tip
+#### Prompt
+
+Suponha que você tem uma função chamada "indicadores" que obtém indicadores para um ativo específico e uma lista chamada "ibov" contendo os nomes dos ativos. Gere o código que execute a função que obtem os indicadores dos ativos para cada ativo, gerando um único dataframe.
+:::
+
+#### Código
+
+```{r}
+# Use lapply para chamar a função para cada ativo e obter uma lista de data frames
+dfs <- lapply(ibov, indicadores)
+```
+
+```{r}
+# Combine os data frames em um único data frame
+dados_completos <- do.call(rbind, dfs)
+```
+
+```{r}
+kable(dados_completos)
+```
+
+Pronto! Consolidamos tudo em uma só tabela. Mas ainda não acabou! Vamos rodar um str nessa tabela para notar algo bem interessante:
+
+```{r}
+str(dados_completos)
+```
+
+***Você notou que todas as colunas estão no formato de texto?***
+
+Então, esse será o nosso próximo desafio. Tratar cada uma das colunas no seu tipo de dados específico.
+
+## Ajustando os tipos dos dados
+
+Nesta etapa, vamos tratar 3 tipos de dados para formatar a nossa tabela:
+
+1.  Dados financeiros ou inteiros
+2.  Dados adimensionais (indicadores)
+3.  Dados percentuais
+
+### 1. Dados financeiros ou inteiros
+
+Vamos passar logo abaixo as colunas com valores financeiros ou inteiros de nossa base de dados (15 colunas).
+
+```{r}
+# Vetor de nomes de colunas
+colunas_valores_fin <- c("Ativo", "Ativo Circulante", "Disponibilidades", 
+                         "Dív. Bruta", "Dív. Líquida", "EBIT_ult_12_meses",
+                         "EBIT_ult_3_meses", "Lucro Líquido_ult_12_meses", 
+                         "Lucro Líquido_ult_3_meses", "Nro. Ações","Patrim. Líq",
+                         "Receita Líquida_ult_12_meses",
+                         "Receita Líquida_ult_3_meses","Valor da firma", 
+                         "Valor de mercado")
+```
+
+Com as colunas referenciadas, vamos pedir suporte ao ChatGPT alterando apenas os dados financeiros e inteiros de nossa base.
+
+::: callout-tip
+#### Prompt
+
+Gere um código em R que trate as colunas do data.frame "dados_completos" passadas pela variável "colunas_valores_fin" que está no formato de chr para float lendo todas essas colunas e fazendo a alteração por meio de um laço for. Lembre-se de inicialmente trocar onde tiver "." por "".
+:::
+
+#### Código
+
+```{r}
+# Substitua "." por "" e converta para float (numérico)
+for (coluna in colunas_valores_fin) {
+  dados_completos[, coluna] <- as.numeric(gsub("\\.", "", dados_completos[,coluna]))
+}
+```
+
+Vamos testar se a conversão foi bem sucedida de acordo com código que geramos com o ChatGPT.
+
+```{r}
+# Testando se a conversão foi bem sucedida
+str(dados_completos %>% select_if(is.numeric))
+```
+
+### 2. Dados adimensionais (indicadores)
+
+Vamos passar logo abaixo as colunas com os indicadores adimensionais de nossa base de dados (14 colunas).
+
+```{r}
+# Vetor de nomes de colunas
+colunas_indicadores <- c("Div Br/ Patrim", "EV / EBIT", "EV / EBITDA","Giro Ativos",
+                         "Liquidez Corr", "LPA", "P/Ativ Circ Liq", "P/Ativos", 
+                         "P/Cap. Giro", "P/EBIT", "P/L", "P/VP", "PSR", "VPA")
+```
+
+Com as colunas referenciadas, vamos pedir suporte ao ChatGPT alterando apenas os dados dos indicadores de nossa base.
+
+::: callout-tip
+#### Prompt
+
+Gere um código em R que trate as colunas do data.frame "dados_completos" passadas pela variável "colunas_indicadores" que está no formato de chr para float lendo todas essas colunas e fazendo a alteração por meio de um laço for. Lembre-se de inicialmente trocar onde tiver "," por ".".
+:::
+
+#### Código
+
+```{r}
+# Substitua "," por "." e converta para float (numérico)
+for (coluna in colunas_indicadores) {
+  dados_completos[[coluna]] <- as.numeric(gsub(",", ".", dados_completos[[coluna]]))
+}
+```
+
+Vamos testar se a conversão foi bem sucedida de acordo com código que geramos com o ChatGPT.
+
+```{r}
+# Testando se a conversão foi bem sucedida
+str(dados_completos %>% select_if(is.numeric))
+```
+
+### 3. Dados percentuais
+
+Vamos passar logo abaixo as colunas com os valores percentuais de nossa base de dados (?? colunas).
+
+```{r}
+# Vetor de nomes de colunas 
+colunas_percent <- c("Cres. Rec (5a)", "Div. Yield", "EBIT / Ativo", "Marg. Bruta",
+                     "Marg. EBIT", "Marg. Líquida", "ROE", "ROIC")
+```
+
+Com as colunas referenciadas, vamos pedir suporte ao ChatGPT alterando apenas os dados dos valores percentuais de nossa base.
+
+Lembrando que manteremos os valores no formato percentual, tirando o sinal de `%` dos valores e alterando as colunas para exibirem ao seu final a expressão `(%)`
+
+::: callout-tip
+#### Prompt
+
+Gere um código em R que trate as colunas do data.frame "dados_completos" passadas pela variável "colunas_percent" que está no formato de chr para float lendo todas essas colunas e fazendo a alteração por meio de um laço for.
+
+Lembre-se de inicialmente trocar onde tiver "%" por "" e "," por ".". Além disso, renomeie todas as colunas do data.frame dadas em "colunas_percent" adicionando " (%)".
+:::
+
+#### Código
+
+```{r}
+# Substitua "%" por "" e "," por "." e converta para float (numérico)
+for (coluna in colunas_percent) {
+  # Troque "%" por vazio e "," por "."
+  dados_completos[, coluna] <- as.numeric(gsub(",", ".", 
+                                               gsub("%", "", 
+                                                    dados_completos[, coluna])))
+  
+  # Renomeie a coluna adicionando "(%)"
+  colnames(dados_completos)[colnames(dados_completos) == coluna] <- paste0(coluna, 
+                                                                           " (%)")
+}
+```
+
+Vamos testar se a conversão foi bem sucedida de acordo com código que geramos com o ChatGPT.
+
+```{r}
+# Testando se a conversão foi bem sucedida (lendo quantas colunas não são numéricas)
+dim(dados_completos %>% select_if(is.character))[2]
+```
+
+```{r}
+# Lendo a estrutura das 5 primeiras colunas
+str(dados_completos[,c(1:5)])
+```
+
+Pronto! Agora nossa tabela está pronta para ser utilizada com os valores em seus devidos tipos. Vamos realizar alguns testes antes de salvá-la no formato `CSV`, que tem uma estrutura simples e é facilmente utilizado por diversos softwares de BI e de análise de dados.
+
+## Testando a tabela
+
+Nesta etapa, vamos realizar alguns testes em nossa tabela, utilizando filtros, agrupando e visualizando os dados para verificar se ela está apta para uso pelo time de consultoria.
+
+### Teste 1 - Filtrando pelo setor
+
+Vamos inicialmente ler os diferentes setores que possuem em nossa base de dados:
+
+```{r}
+# Quais setores aparecem na base de dados
+unique(dados_completos$Setor)
+```
+
+Para filtrarmos por setor é interessante também observar a quantidade de repetições desses setores em nossa base de dados. Vamos utilizar o ChatGPT aqui?
+
+::: callout-tip
+#### Prompt
+
+Gere um código em R que crie um tabela com os dados da coluna "Setor" do data.frame "dados_completos e passe o resultado para a variável"freq_setor". Em seguida, crie uma variável "freq_setor_ord" que recebe a tabela "freq_setor" como data.frame ordenando os dados de maneira decrescente pela coluna "Freq". Por fim, exiba a variável "freq_setor_ord".
+:::
+
+#### Código
+
+```{r}
+# Criar tabela de frequência para a coluna "Setor"
+freq_setor <- dados_completos %>%
+  group_by(Setor) %>%
+  summarise(Freq = n()) %>%
+  ungroup()
+
+# Criar variável ordenada
+freq_setor_ord <- freq_setor %>%
+  arrange(desc(Freq))         
+
+# Exibindo a tabela
+kable(freq_setor_ord)
+```
+
+Podemos notar que o setor de **Energia Elétrica** possui o maior número de ativos selecionados. Vamos usar o ChatGPT para filtrar os dados por este setor, ordenado pelo nome do ativo.
+
+::: callout-tip
+#### Prompt
+
+Gere um código em R que filtre o dataframe "dados_completos" que possuem "Energia Elétrica" na coluna "Setor" e ordene os dados em ordem alfabética pela coluna "Ação".
+:::
+
+#### Código
+
+```{r}
+# Filtre e ordene os dados
+setor_eletrico <- dados_completos %>%
+  filter(Setor == "Energia Elétrica") %>%
+  arrange(Ação)
+```
+
+```{r}
+setor_eletrico
+```
+
+Conseguimos filtrar de maneira simples e direta todos os ativos cujo setor seja de "Energia Elétrica". Vamos partir para o filtro levando em conta os valores de um dos indicadores.
+
+### Teste 2 - Filtrando por valor de indicador
+
+::: callout-tip
+#### Prompt
+
+Gere um código em R que selecione apenas as colunas "Ação" e "Div. Yield (%)" do dataframe "dados_completos" e que filtre os dados para valores de "Div. Yield (%)" acima de 8, escolhendo entre eles os 5 ativos com os maiores valores de "Div. Yield (%)".
+:::
+
+#### Código
+
+```{r}
+maiores_DY <- dados_completos %>%
+  select(Ação, `Div. Yield (%)`) %>%
+  filter(`Div. Yield (%)` > 8) %>%
+  top_n(5, wt = `Div. Yield (%)`)
+```
+
+> O ChatGPT pode trazer aqui duas funções que executam a mesma ação: `slice_max` ou `top_n`.
+
+```{r}
+maiores_DY
+```
+
+Conseguimos filtrar os ativos com DY (Dividend Yield) acima de 8%, escolhendo também quais colunas queremos selecionar para representar. Algo que poderia ser feito aqui é gerar uma visualização que apresente os maiores DY ou realizar uma seleção customizada de ativos.
+
+Vamos partir para mais um filtro, gerando um novo dataframe com uma nova coluna baseada em valores do dataframe original (dados_completos)
+
+### Teste 3 - Filtrando por 1 ou mais indicadores
+
+Agora, vamos criar um dataframe `carteira_cliente` que recebe apenas os ativos que possuem P/L (Preço sobre Lucro) menor ou igual a 1.5 e P/VP (Preço pelo Valor Patrimonial) menor ou igual a 15. E além disso, vamos gerar uma coluna chamada **Valor Intrínseco** que é dada pela seguinte fórmula:
+
+$Valor Intrínseco = \sqrt(22.5 * LPA * VPA)$
+
+::: callout-tip
+#### Prompt
+
+Gere um código em R que crie um data.frame chamado "carteira_cliente" que selecione apenas as colunas "Ação", "P/L", "P/VP", "LPA" e "VPA" do data.frame "dados_completos". Filtre os dados para valores de "P/L" menor ou igual a 15 e "P/VP" menor ou igual a 1.5 e valores de "VPA" e "LPA" acima de 0. E, além disso, gere uma coluna em "carteira_cliente" chamada "Valor Intrínseco" que é dada pela seguinte fórmula : raiz quadradada do produto entre 22.5, "LPA" e "VPA".
+:::
+
+#### Código
+
+```{r}
+# Crie o data.frame "carteira_cliente" com as condições e a coluna "Valor Intrínseco"
+carteira_cliente <- dados_completos %>%
+  select(Ação, "P/L", "P/VP", LPA, VPA) %>%
+  filter(`P/L` <= 15, `P/VP` <= 1.5, VPA > 0, LPA > 0) %>%
+  mutate(`Valor Intrínseco` = sqrt(22.5 * LPA * VPA))
+```
+
+```{r}
+kable(carteira_cliente)
+```
+
+Conseguimos com sucesso gerar um novo data.frame filtrando as colunas desejadas e criando uma nova coluna por meio do cálculo das colunas que formatamos para dados numéricos. Para finalizar nossos testes vamos pedir o suporte ao chatGPT para gerar uma visualização com os dados da tabela.
+
+### Teste 4 - Visualização de dados
+
+Para testar também a visualização dos dados, vamos gerar um gráfico de cascata com o Balanço Patrimonial dos Ativos da **PRIO3**. Para isso, inicialmente vamos criar um df só com os dados desse ativo.
+
+```{r}
+prio <- dados_completos %>% filter(Ação == "PRIO3")
+```
+
+Para que a gente consiga gerar esse gráfico de cascata, primeiramente precisamos calcular o valor do **Ativo Não Circulante** que é a diferenção entre **Ativo** e **Ativo Circulante**. Vamos fazer esse processo com o suporte do ChatGPT.
+
+::: callout-tip
+#### Prompt
+
+Gere um código em R que crie um gráfico de cascata pelo plotly passando para um objeto "fig" que apresente três valores do dataframe "prio": os valores "Ativo", "Ativo Circulante" e "Ativo Não Circulante".
+
+Neste gráfico, para "measure" passe "absolute" para "Ativo", "relative" para o valor negativo de "Ativo Circulante" e "total" para o "Ativo Não Circulante". Para variável "x", passe o vetor do nome de cada coluna, por exemplo, `x=c("Ativo",...)` e para variável name, passe "Ativo".
+
+Ajuste o layout para apresentar os incrementos, eliminar a legenda e colocar como Título "Balanço Patrimonial dos Ativos (PRIO3)".
+:::
+
+#### Código
+
+```{r}
+# Suponha que você já tenha o dataframe "prio" e o pacote "plotly" instalado
+# install.packages("plotly")
+library(plotly)
+prio$`Ativo Não Circulante` <- prio$Ativo - prio$`Ativo Circulante`
+
+# Criar um objeto de figura plotly
+fig <- plot_ly(
+  data = prio,
+  x = c("Ativo", "Ativo Circulante", "Ativo Não Circulante"),
+  y = c(prio$`Ativo`, -prio$`Ativo Circulante`, prio$`Ativo Não Circulante`),
+  name = "Ativo",
+  type = "waterfall",
+  measure = c("absolute", "relative", "total")
+)
+
+# Ajustar o layout
+fig <- fig %>%
+  layout(
+    title = "Balanço Patrimonial dos Ativos (PRIO3)",
+    showlegend = FALSE
+  )
+
+# Exibir o gráfico
+fig
+```
+
+Pronto! Conseguimos gerar o gráfico desejado e testar a nossa base em diversas situações. Agora que sabemos que ela está pronta para o uso vamos partir para a última etapa desse projeto que é salvar a nossa tabela em diversos formatos para uso.
+
+## Salvando a tabela
+
+Nesta etapa, vamos salvar a nossa tabela com os `dados_completos` e, para isso, vamos pedir mais uma vez para o chatGPT como salvá-la em três tipos diferentes:
+
+-   CSV
+
+-   JSON
+
+-   XLSX
+
+::: callout-tip
+#### Prompt
+
+Gere um código em R que salve o data.frame "dados_completos em três formatos diferentes: csv, json e xlsx. Em todos os formatos nomeie o arquivo salvo como"dados_ibov_bulltrend" seguido da extensão do arquivo.
+:::
+
+#### Código
+
+```{r, warning=FALSE}
+# Salvar em formato CSV
+write.csv(dados_completos, "dados_ibov_bulltrend.csv", row.names = FALSE)
+
+# Salvar em formato JSON
+library(jsonlite)
+write_json(dados_completos, "dados_ibov_bulltrend.json")
+
+# Salvar em formato XLSX
+library(openxlsx)
+write.xlsx(dados_completos, "dados_ibov_bulltrend.xlsx")
+```
+
+## Referências
+
+-   Documentação do tidyverse (em inglês). Disponível em: <https://tidyverse.tidyverse.org/>
+
+-   Documentação do jsonlite (em inglês). Disponível em: <https://jeroen.r-universe.dev/jsonlite/jsonlite.pdf>
+
+-   Documentação do plolty (em inglês).Disponível em: <https://plotly.com/r/>
+
+-   Documentação do openxlsx (em inglês). Disponível em: <https://cran.r-project.org/web/packages/openxlsx/openxlsx.pdf>
+
+-   R for Data Science (2e) (em inglês). Disponível em: [https://r4ds.hadley.nz](https://r4ds.hadley.nz/)
+
+-   RDRR.io - Site compilando as documentações de pacotes do R (CRAN, GitHub, R-forge...). Disponível em: <https://rdrr.io/>
+
+-   Índice Bovespa (Ibovespa B3). Disponível em: <https://www.b3.com.br/pt_br/market-data-e-indices/indices/indices-amplos/indice-ibovespa-ibovespa-composicao-da-carteira.htm>
