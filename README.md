@@ -8,7 +8,7 @@ O objetivo deste curso é auxiliar você a utilizar o ChatGPT como um assistente
 
 ## Introdução
 
-![](images/Logo.png){width="720"}
+![](images/Logo.png)
 
 Neste curso, vamos trabalhar com o storytelling da consultoria financeira **Bulltrend** que é uma empresa focada no suporte a clientes que investem no mercado financeiro, investigando as suas carteiras de investimento e analisando os ativos da bolsa brasileira (Ibovespa), pensando na melhor forma de indicar bons ativos e acompanhar a evolução destes.
 
