@@ -2,7 +2,7 @@
 
 Boas-vindas a mais um curso de **inteligência artificial** da Alura! 
 
-Esse Github foi produzido com muito carinho para você montar o seu portfólio com as atividades do curso e elaborar suas próprias hipóteses, testar as técnicas exploradas dentro do curso e também adicionar outras durante a sua prátcia conciliando a linguagem R e o suporte de ferramentas de IA como o ChatGPT.
+Esse Github foi produzido com muito carinho para você montar o seu portfólio com as atividades do curso e elaborar suas próprias hipóteses, testar as técnicas exploradas dentro do curso e também adicionar outras durante a sua prática conciliando a linguagem R e o suporte de ferramentas de IA como o ChatGPT.
 
 O objetivo deste curso é auxiliar você a utilizar o ChatGPT como um assistente pessoal para agilizar as análises de dados por meio da linguagem R. Você irá aprender a combinar os conhecimentos prévios de análise de dados junto ao auxílio das respostas do ChatPT por meio de prompts elaborados que visam extrair, tratar e visualizar dados em um projeto prático. Este projeto possibilita sair da leitura de dados de um json extraído de um site de finanças até a consolidação dos dados em uma tabela no R.
 
