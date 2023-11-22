@@ -785,7 +785,7 @@ Vamos partir para mais um filtro, gerando um novo dataframe com uma nova coluna 
 
 ### Teste 3 - Filtrando por 1 ou mais indicadores
 
-Agora, vamos criar um dataframe `carteira_cliente` que recebe apenas os ativos que possuem P/L (Preço sobre Lucro) menor ou igual a 1.5 e P/VP (Preço pelo Valor Patrimonial) menor ou igual a 15. E além disso, vamos gerar uma coluna chamada **Valor Intrínseco** que é dada pela seguinte fórmula:
+Agora, vamos criar um dataframe `carteira_cliente` que recebe apenas os ativos que possuem P/L (Preço sobre Lucro) menor ou igual a 15 e P/VP (Preço pelo Valor Patrimonial) menor ou igual a 1.5. E além disso, vamos gerar uma coluna chamada **Valor Intrínseco** que é dada pela seguinte fórmula:
 
 $Valor Intrínseco = \sqrt(22.5 * LPA * VPA)$
 
